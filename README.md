@@ -1,245 +1,67 @@
-# ReCoin — Sprint 1 — Project Guide
+# ♻️ ReCoin
 
-**A web platform that turns recyclable waste into value.**
+**Turn recyclable waste into value.** ReCoin is a web platform where citizens declare the recyclable waste they bring to drop-off points and earn coins for it. Admins verify accounts and declarations, and an interactive map shows where to drop off each material.
 
----
-
-## Project Structure
-
-```
-recoin/
-├── venv/               # Python virtual environment (don't touch)
-├── backend/            # Django backend
-│   ├── backend/        # Project config (settings, urls)
-│   ├── users/          # Auth, roles, profiles
-│   ├── waste/          # Materials and declarations
-│   ├── locations/      # Drop-off points (map)
-│   ├── manage.py
-│   └── .env            # Environment variables (keep private)
-└── frontend/           # React frontend
-    ├── src/
-    │   ├── api/        # Axios instance
-    │   ├── components/ # Navbar, PrivateRoute
-    │   ├── context/    # AuthContext (login state)
-    │   └── pages/
-    │       ├── auth/   # Login, Register
-    │       ├── citizen/# Profile, DeclareWaste, Map
-    │       └── admin/  # PendingAccounts
-    └── package.json
-```
+![Django](https://img.shields.io/badge/Django-092E20?style=flat-square&logo=django&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL%20%2B%20PostGIS-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Leaflet](https://img.shields.io/badge/Leaflet-199900?style=flat-square&logo=leaflet&logoColor=white)
+![Status](https://img.shields.io/badge/status-Sprint%201-blue?style=flat-square)
 
 ---
 
-## Prerequisites
+## Features (Sprint 1)
 
-Make sure these are installed on your machine:
+- **Accounts and roles**: citizen, business, collector, factory and admin. New accounts wait for admin approval.
+- **Waste declarations**: a citizen declares a material and a quantity, with an optional photo. Each material has its own coin rate (per kg, litre or unit).
+- **Verification workflow**: every declaration is *pending* until an admin marks it *verified* or *rejected*.
+- **Drop-off map**: drop-off points are stored as PostGIS coordinates and shown on a Leaflet map with the materials each one accepts.
+- **Admin panel**: approve pending accounts and manage materials, declarations and locations.
 
-| Tool | Version used | Check command |
-|---|---|---|
-| Python | 3.10.12 | `python3 --version` |
-| Node | 18.x | `node --version` |
-| PostgreSQL | 14 | `psql --version` |
-| PostGIS | 3.2 | installed via `apt` |
+## Screenshots
 
----
+> _Add 2–3 screenshots here (login, declare waste, map). Put them in a `docs/` folder and link them like this:_
+> `![Map](docs/map.png)`
 
-## First-Time Setup (already done — skip if re-cloning)
+## Architecture
 
-### 1. Database
-
-```bash
-sudo -u postgres psql
+```
+React (frontend/)  ──Axios + JWT──►  Django REST API (backend/)  ──►  PostgreSQL + PostGIS
+  pages: auth, citizen, admin                 apps: users, waste, locations
 ```
 
-```sql
-CREATE USER recoin_user WITH PASSWORD 'recoin_pass';
-CREATE DATABASE recoin_db OWNER recoin_user;
-\c recoin_db
-CREATE EXTENSION postgis;
-GRANT ALL PRIVILEGES ON DATABASE recoin_db TO recoin_user;
-\q
-```
+| Layer | Tech |
+|---|---|
+| Frontend | React 19, React Router, Axios, React-Leaflet |
+| Backend | Django, Django REST Framework, SimpleJWT, GeoDjango, drf-spectacular (API docs) |
+| Database | PostgreSQL 14 + PostGIS 3.2 |
 
-### 2. Backend dependencies
+## Quick start
 
 ```bash
-cd ~/recoin
-python3 -m venv venv
-source venv/bin/activate
-pip install django djangorestframework djangorestframework-simplejwt django-cors-headers psycopg2-binary django-environ Pillow
-```
-
-### 3. Run migrations
-
-```bash
-cd ~/recoin/backend
-source ~/recoin/venv/bin/activate
+# Backend
+cd backend
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env        # fill in SECRET_KEY and DB settings
 python manage.py migrate
-```
+python manage.py runserver
 
-### 4. Create admin account
-
-```bash
-python manage.py createsuperuser
-```
-
-### 5. Frontend dependencies
-
-```bash
-cd ~/recoin/frontend
+# Frontend (new terminal)
+cd frontend
 npm install
-```
-
----
-
-## How to Launch (every time)
-
-You need **two terminals** running at the same time.
-
-### Terminal 1 — Django backend
-
-```bash
-cd ~/recoin/backend
-source ~/recoin/venv/bin/activate
-python manage.py runserver 8001
-```
-
-Backend runs at: http://127.0.0.1:8001
-
-### Terminal 2 — React frontend
-
-```bash
-cd ~/recoin/frontend
 npm start
 ```
 
-Frontend runs at: http://localhost:3001 (or 3000 if nothing else is running)
+Full setup guide (database, PostGIS, admin account, API endpoints): see **[SETUP.md](SETUP.md)**.
 
----
+## Roadmap
 
-## Django Admin Panel
+- [ ] Coin wallet and rewards catalogue
+- [ ] Collector pickup requests
+- [ ] Statistics dashboard for admins
+- [ ] Deployment
 
-URL: http://127.0.0.1:8001/admin/  
-Login: your superuser credentials (username: `malak`)
+## Author
 
-If you forgot your password:
-```bash
-cd ~/recoin/backend
-source ~/recoin/venv/bin/activate
-python manage.py changepassword malak
-```
-
-### What to manage in the admin:
-
-**Materials** (Waste → Materials)
-Add recyclable material types with their coin rates.
-
-| Name | Unit | Coins per unit |
-|---|---|---|
-| Plastic Bottle | unit | 5 |
-| Used Oil | litre | 10 |
-| Aluminum Can | unit | 3 |
-| Cardboard | kg | 2 |
-
-**Drop-off Points** (Locations → Drop off points)
-Add a point with a name, address, and location.
-For the location field, use the map widget or type: `POINT(longitude latitude)`
-Example for central Tunis: `POINT(10.1815 36.8065)`
-
-**Users** (Users → Users)
-Approve business/collector/factory accounts that are waiting for verification.
-
----
-
-## API Endpoints
-
-Base URL: `http://127.0.0.1:8001/api`
-
-All protected endpoints require the header:
-```
-Authorization: Bearer <access_token>
-```
-
-### Auth
-
-| Method | Endpoint | Description | Auth required |
-|---|---|---|---|
-| POST | `/users/register/` | Create account | No |
-| POST | `/users/login/` | Get JWT tokens | No |
-| POST | `/users/token/refresh/` | Refresh access token | No |
-| GET/PATCH | `/users/profile/` | View or edit profile | Yes |
-
-### Admin
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/users/admin/pending/` | List accounts awaiting approval |
-| POST | `/users/admin/approve/<id>/` | Approve an account |
-
-### Waste
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/waste/materials/` | List all materials and coin rates |
-| GET | `/waste/declarations/` | My declarations |
-| POST | `/waste/declarations/` | Submit a new declaration |
-
-### Locations
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/locations/dropoff-points/` | All active drop-off points |
-
----
-
-## User Roles
-
-| Role | Auto-approved | What they can do |
-|---|---|---|
-| Citizen | Yes | Declare waste, view map, earn Coins |
-| Business | No (needs admin) | Schedule pickups, earn Eco Points |
-| Collector | No (needs admin) | Accept pickup requests, validate collections |
-| Factory | No (needs admin) | Buy material lots |
-| Admin | Yes (superuser) | Manage everything |
-
----
-
-## Quick API Test (curl)
-
-Register:
-```bash
-curl -s -X POST http://127.0.0.1:8001/api/users/register/ \
-  -H "Content-Type: application/json" \
-  -d '{"username": "test", "email": "test@test.com", "password": "test1234!", "role": "citizen"}' \
-  | python3 -m json.tool
-```
-
-Login:
-```bash
-curl -s -X POST http://127.0.0.1:8001/api/users/login/ \
-  -H "Content-Type: application/json" \
-  -d '{"username": "test", "password": "test1234!"}' \
-  | python3 -m json.tool
-```
-
----
-
-## Sprint 1 — What Was Built
-
-- Custom user model with 5 roles
-- JWT authentication (register, login, token refresh)
-- Profile view and edit
-- Admin account approval flow
-- Waste declaration form with photo upload
-- Materials catalog with coin rates
-- Drop-off points with PostGIS geolocation
-- React frontend: Login, Register, Profile, Declare Waste, Map, Admin panel
-- Protected routes based on login and role
-
-## Sprint 2 — Next Steps
-
-- Pickup requests
-- QR code validation by collector
-- Automatic Coin crediting after verified collection
-- Offers and coupons (business → citizen)
-- Notifications
+**Malak Abdelkhalek** — [GitHub](https://github.com/malakabdelkhalek) · [LinkedIn]https://www.linkedin.com/in/malak-abdelkhalek-5474b12a6/
